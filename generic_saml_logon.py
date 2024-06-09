@@ -1,12 +1,9 @@
 import argparse
-import re
 
-from bs4 import BeautifulSoup, PageElement
+from bs4 import BeautifulSoup
 from json import loads
 from typing import Optional
-from requests import HTTPError
 from requests import Session, Response
-from urllib.parse import urlparse, ParseResult
 
 USERNAME_KEYS: list = ['username', 'user_name', 'client_id']
 PASSWORD_KEYS: list = ['password', 'passwd', 'client_secret']
