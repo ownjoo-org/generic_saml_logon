@@ -14,12 +14,26 @@ def get_form_data(markup: str) -> dict:
     result: dict = {}
 
     soup: BeautifulSoup = BeautifulSoup(markup=markup, features='html.parser')
-
     form = soup.find('form')
+    meta_refresh = soup.find('meta', attrs={'http-equiv': 'refresh'})
     if form:
         result['action'] = form.get('action')
         result['method'] = form.get('method')
-        result.update(dict(form.find_all(name='input')))
+        inputs: list = form.find_all(name='input')
+        for input in inputs:
+            result[input.get('name')] = input.get('value')
+    elif meta_refresh:
+        content: str = meta_refresh.get('content')
+        data_url: str = meta_refresh.get('data-url')
+        if data_url:
+            result['action'] = data_url
+            result['method'] = 'GET'
+        elif content and 'url=' in content:
+            content_url = content.split('url=')[1]
+            result['action'] = content_url
+            result['method'] = 'GET'
+    else:
+        raise ValueError(f'No form or meta refresh found: {soup}')
 
     return result
 
@@ -33,7 +47,7 @@ def get_saml_response(session: Session, sp_url: str, username: str, password: st
     method: str = 'GET'
 
     while requests_remaining and not result:
-        if method == 'GET':
+        if method.upper() == 'GET':
             response: Response = session.get(url=url, params=form_data)
         else:
             response: Response = session.post(url=url, data=form_data)
@@ -41,8 +55,8 @@ def get_saml_response(session: Session, sp_url: str, username: str, password: st
 
         form_data = get_form_data(markup=response.text)
         if form_data:
-            url = form_data.get('action')
-            method = str(form_data.get('method')).upper()
+            url = form_data.pop('action', '')
+            method = form_data.pop('method', '')
             for input_name in form_data:
                 if input_name.lower() in USERNAME_KEYS:
                     form_data[input_name] = username
@@ -122,4 +136,4 @@ if __name__ == '__main__':
     ):
         print(data)
     else:
-        print('No results found')
+        print('No SAMLResponse...  This API is probably more sophisticated than this generic SAML code supports.')
