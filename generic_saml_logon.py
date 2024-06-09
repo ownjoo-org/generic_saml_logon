@@ -19,9 +19,9 @@ def get_form_data(markup: str) -> dict:
     if form:
         result['action'] = form.get('action')
         result['method'] = form.get('method')
-        inputs: list = form.find_all(name='input')
-        for input in inputs:
-            result[input.get('name')] = input.get('value')
+        form_inputs: list = form.find_all(name='input')
+        for form_input in form_inputs:
+            result[form_input.get('name')] = form_input.get('value')
     elif meta_refresh:
         content: str = meta_refresh.get('content')
         data_url: str = meta_refresh.get('data-url')
