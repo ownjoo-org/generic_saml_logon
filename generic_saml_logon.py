@@ -12,8 +12,10 @@ USERNAME_KEYS: list = ['username', 'user_name', 'client_id']
 PASSWORD_KEYS: list = ['password', 'passwd', 'client_secret']
 
 
-def get_form_data(soup: BeautifulSoup) -> dict:
+def get_form_data(markup: str) -> dict:
     result: dict = {}
+
+    soup: BeautifulSoup = BeautifulSoup(markup=markup, features='html.parser')
 
     form = soup.find('form')
     if form:
@@ -29,29 +31,27 @@ def get_saml_response(session: Session, sp_url: str, username: str, password: st
 
     url: str = sp_url
     form_data: dict = {}
-    request_limit: int = 10
+    requests_remaining: int = 10
     method: str = 'GET'
 
-    while not result and request_limit:
+    while requests_remaining and not result:
         if method == 'GET':
             response: Response = session.get(url=url, params=form_data)
         else:
             response: Response = session.post(url=url, data=form_data)
-        request_limit -= 1
-        soup: BeautifulSoup = BeautifulSoup(response.text, 'html.parser')
-        saml_response: PageElement = soup.find(attrs={'name': 'SAMLResponse'})
-        if saml_response:
-            result: str = saml_response.get('value')
-            break
-        else:
-            form_data = get_form_data(html=response.text)
+        requests_remaining -= 1
+
+        form_data = get_form_data(markup=response.text)
+        if form_data:
             url = form_data.get('action')
             method = str(form_data.get('method')).upper()
-            for input in form_data:
-                if input.lower() in USERNAME_KEYS:
-                    form_data[input] = username
-                elif input.lower() in PASSWORD_KEYS:
-                    form_data[input] = password
+            for input_name in form_data:
+                if input_name.lower() in USERNAME_KEYS:
+                    form_data[input_name] = username
+                elif input_name.lower() in PASSWORD_KEYS:
+                    form_data[input_name] = password
+
+            result = form_data.get('SAMLResponse')
 
     return result
 
