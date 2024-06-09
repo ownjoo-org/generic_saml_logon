@@ -88,13 +88,13 @@ if __name__ == '__main__':
         '--username',
         type=str,
         required=True,
-        help='The user name for your PingFederate account',
+        help='The user name for your IdP account',
     )
     parser.add_argument(
         '--password',
         type=str,
         required=True,
-        help='The password for your PingFederate account',
+        help='The password for your IdP account',
     )
     parser.add_argument(
         '--max_redirects',
