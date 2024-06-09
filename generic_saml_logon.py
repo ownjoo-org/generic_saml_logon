@@ -10,6 +10,7 @@ from urllib.parse import urlparse, ParseResult
 
 USERNAME_KEYS: list = ['username', 'user_name', 'client_id']
 PASSWORD_KEYS: list = ['password', 'passwd', 'client_secret']
+MAX_REDIRECTS: int = 10
 
 
 def get_form_data(markup: str) -> dict:
@@ -26,12 +27,12 @@ def get_form_data(markup: str) -> dict:
     return result
 
 
-def get_saml_response(session: Session, sp_url: str, username: str, password: str) -> str:
+def get_saml_response(session: Session, sp_url: str, username: str, password: str, max_redirects: Optional[int]) -> str:
     result: Optional[str] = None
 
     url: str = sp_url
     form_data: dict = {}
-    requests_remaining: int = 10
+    requests_remaining: int = max_redirects or MAX_REDIRECTS
     method: str = 'GET'
 
     while requests_remaining and not result:
@@ -61,6 +62,7 @@ def main(
         username: str,
         password: str,
         proxies: Optional[dict] = None,
+        max_redirects: Optional[int] = None,
 ) -> str:
     session = Session()
     session.proxies = proxies
@@ -69,6 +71,7 @@ def main(
         sp_url=sp_url,
         username=username,
         password=password,
+        max_redirects=max_redirects or MAX_REDIRECTS,
     )
     return result
 
@@ -94,6 +97,13 @@ if __name__ == '__main__':
         help='The password for your PingFederate account',
     )
     parser.add_argument(
+        '--max_redirects',
+        type=int,
+        required=False,
+        help='The maximum number of redirects to allow before giving up',
+        default=MAX_REDIRECTS
+    )
+    parser.add_argument(
         '--proxies',
         type=str,
         required=False,
@@ -111,6 +121,7 @@ if __name__ == '__main__':
         username=args.username,
         password=args.password,
         proxies=proxies,
+        max_redirects=args.max_redirects,
     ):
         print(data)
     else:
