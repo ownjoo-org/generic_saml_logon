@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 from json import loads
 from typing import Optional
 from requests import Session, Response
+from urllib.parse import urlparse, ParseResult
 
 USERNAME_KEYS: list = ['username', 'user_name', 'client_id']
 PASSWORD_KEYS: list = ['password', 'passwd', 'client_secret']
@@ -41,22 +42,28 @@ def get_form_data(markup: str) -> dict:
 def get_saml_response(session: Session, sp_url: str, username: str, password: str, max_redirects: Optional[int]) -> str:
     result: Optional[str] = None
 
-    url: str = sp_url
+    next_url: str = sp_url
+    url: ParseResult = urlparse(sp_url)
     form_data: dict = {}
     requests_remaining: int = max_redirects or MAX_REDIRECTS
     method: str = 'GET'
 
     while requests_remaining and not result:
         if method.upper() == 'GET':
-            response: Response = session.get(url=url, params=form_data)
+            response: Response = session.get(url=next_url, params=form_data)
         else:
-            response: Response = session.post(url=url, data=form_data)
+            response: Response = session.post(url=next_url, data=form_data)
+        url = urlparse(response.url)
         requests_remaining -= 1
 
         form_data = get_form_data(markup=response.text)
         if form_data:
-            url = form_data.pop('action', '')
             method = form_data.pop('method', '')
+            next_url = form_data.pop('action', '')
+            # fix relative URLs
+            if isinstance(next_url, str) and not next_url.startswith('http'):
+                next_url = f'{url.scheme}://{url.netloc}/{next_url}'
+
             for input_name in form_data:
                 if input_name.lower() in USERNAME_KEYS:
                     form_data[input_name] = username
